@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ir_cron_expire_vendor_quotes" model="ir.cron">
+        <field name="name">Expire Vendor Quotes</field>
+        <field name="model_id" search="[('model', '=', 'itx.vendor.quote')]"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+        <field name="code">model._cron_expire_quotes()</field>
+    </record>
+
+</odoo>

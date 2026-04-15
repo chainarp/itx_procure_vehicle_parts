@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ======================== -->
+    <!-- Vendor Quote Form View   -->
+    <!-- ======================== -->
+    <record id="itx_vendor_quote_view_form" model="ir.ui.view">
+        <field name="name">itx.vendor.quote.view.form</field>
+        <field name="model">itx.vendor.quote</field>
+        <field name="arch" type="xml">
+            <form string="Vendor Quote">
+                <header>
+                    <button name="action_send"
+                            string="Mark as Sent"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_mark_quoted"
+                            string="Mark as Quoted"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'sent'"/>
+                    <button name="action_select"
+                            string="Select This Vendor"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'quoted'"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            invisible="state in ('selected', 'cancelled')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,sent,quoted,selected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Quote Info">
+                            <field name="order_id" readonly="1"/>
+                            <field name="vendor_id" readonly="state != 'draft'"/>
+                            <field name="amount_total"/>
+                            <field name="is_selected" readonly="1"/>
+                        </group>
+                        <group string="Timing">
+                            <field name="quote_deadline"/>
+                            <field name="date_sent" readonly="1"/>
+                            <field name="date_quoted" readonly="1"/>
+                            <field name="portal_url" widget="CopyClipboardChar"
+                                   readonly="1" string="Portal Link"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Quote Lines" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="part_code"/>
+                                    <field name="procure_line_id" readonly="1"
+                                           string="Part Description"/>
+                                    <field name="quantity" readonly="1"/>
+                                    <field name="origin_id"/>
+                                    <field name="condition_id"/>
+                                    <field name="is_available"/>
+                                    <field name="price_unit"/>
+                                    <field name="price_subtotal"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Attachments" name="attachments">
+                            <field name="attachment_ids" widget="many2many_binary"
+                                   string="Upload vendor quotation documents"/>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Vendor Quote List View   -->
+    <!-- ======================== -->
+    <record id="itx_vendor_quote_view_list" model="ir.ui.view">
+        <field name="name">itx.vendor.quote.view.list</field>
+        <field name="model">itx.vendor.quote</field>
+        <field name="arch" type="xml">
+            <list string="Vendor Quotes"
+                  decoration-success="state == 'selected'"
+                  decoration-danger="state == 'expired'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="order_id"/>
+                <field name="vendor_id"/>
+                <field name="amount_total"/>
+                <field name="quote_deadline"/>
+                <field name="date_quoted"/>
+                <field name="is_selected"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'sent'"
+                       decoration-success="state in ('quoted', 'selected')"
+                       decoration-danger="state == 'expired'"
+                       decoration-muted="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Vendor Quote Search      -->
+    <!-- ======================== -->
+    <record id="itx_vendor_quote_view_search" model="ir.ui.view">
+        <field name="name">itx.vendor.quote.view.search</field>
+        <field name="model">itx.vendor.quote</field>
+        <field name="arch" type="xml">
+            <search string="Vendor Quotes">
+                <field name="order_id"/>
+                <field name="vendor_id"/>
+                <separator/>
+                <filter string="Sent" name="filter_sent" domain="[('state', '=', 'sent')]"/>
+                <filter string="Quoted" name="filter_quoted" domain="[('state', '=', 'quoted')]"/>
+                <filter string="Selected" name="filter_selected" domain="[('state', '=', 'selected')]"/>
+                <filter string="Expired" name="filter_expired" domain="[('state', '=', 'expired')]"/>
+                <separator/>
+                <group>
+                    <filter string="Vendor" name="groupby_vendor"
+                            domain="[]" context="{'group_by': 'vendor_id'}"/>
+                    <filter string="Status" name="groupby_state"
+                            domain="[]" context="{'group_by': 'state'}"/>
+                    <filter string="Procure Order" name="groupby_order"
+                            domain="[]" context="{'group_by': 'order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Action                   -->
+    <!-- ======================== -->
+    <record id="itx_vendor_quote_action" model="ir.actions.act_window">
+        <field name="name">Vendor Quotes</field>
+        <field name="res_model">itx.vendor.quote</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

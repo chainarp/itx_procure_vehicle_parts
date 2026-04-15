@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================ -->
+    <!-- Vendor Quote Portal Form (ร้านอะไหล่กรอกราคา) -->
+    <!-- ============================================ -->
+    <template id="portal_vendor_quote_form" name="Vendor Quote Form">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10">
+
+                        <!-- Header -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h3 class="mb-0">
+                                    Vendor Quote — <t t-out="order.name"/>
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Vendor:</strong>
+                                        <span t-out="quote.vendor_id.name"/>
+                                        <br/>
+                                        <strong>Insurance:</strong>
+                                        <span t-out="order.partner_id.name"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Vehicle:</strong>
+                                        <span t-out="order.vehicle_brand"/>
+                                        <span t-out="order.vehicle_model"/>
+                                        <span t-out="order.vehicle_year"/>
+                                        <br/>
+                                        <strong>Plate:</strong>
+                                        <span t-out="order.vehicle_plate"/>
+                                    </div>
+                                </div>
+
+                                <!-- Countdown Timer -->
+                                <t t-if="quote.quote_deadline and not is_expired and not is_submitted">
+                                    <div class="alert alert-warning mt-3 text-center" id="countdown-alert">
+                                        <strong>Deadline: </strong>
+                                        <span id="countdown-timer" class="h4"
+                                              t-att-data-deadline="quote.quote_deadline.isoformat()">
+                                        </span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <t t-if="error == 'expired'">
+                            <div class="alert alert-danger">
+                                <strong>หมดเวลาแล้ว</strong> — ไม่สามารถกรอกราคาได้
+                            </div>
+                        </t>
+                        <t t-if="error == 'already_submitted'">
+                            <div class="alert alert-info">
+                                <strong>เสนอราคาแล้ว</strong> — ไม่สามารถกรอกซ้ำได้
+                            </div>
+                        </t>
+                        <t t-if="is_expired and not error">
+                            <div class="alert alert-danger">
+                                <strong>หมดเวลาเสนอราคา</strong>
+                            </div>
+                        </t>
+                        <t t-if="success">
+                            <div class="alert alert-success">
+                                <strong>ส่งเสนอราคาเรียบร้อยแล้ว!</strong> ขอบคุณครับ
+                            </div>
+                        </t>
+                        <t t-if="is_submitted and not success">
+                            <div class="alert alert-info">
+                                <strong>เสนอราคาแล้ว</strong> เมื่อ
+                                <span t-out="quote.date_quoted"/>
+                            </div>
+                        </t>
+
+                        <!-- Form -->
+                        <t t-if="not is_expired and not is_submitted">
+                            <form t-att-action="'/procure/quote/%s/submit' % quote.portal_token"
+                                  method="POST">
+                                <input type="hidden" name="csrf_token"
+                                       t-att-value="request.csrf_token()"/>
+
+                                <table class="table table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Part Code</th>
+                                            <th>Part Description</th>
+                                            <th>Qty</th>
+                                            <th>Origin</th>
+                                            <th>Condition</th>
+                                            <th>Available</th>
+                                            <th>Unit Price</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-set="idx" t-value="1"/>
+                                        <t t-foreach="lines" t-as="line">
+                                            <tr>
+                                                <td t-out="idx"/>
+                                                <td>
+                                                    <input type="text"
+                                                           t-att-name="'part_code_%s' % line.id"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="..."/>
+                                                </td>
+                                                <td t-out="line.procure_line_id.name"/>
+                                                <td t-out="line.quantity"/>
+                                                <td>
+                                                    <select t-att-name="'origin_%s' % line.id"
+                                                            class="form-select form-select-sm">
+                                                        <t t-foreach="origins" t-as="o">
+                                                            <option t-att-value="o.id"
+                                                                    t-att-selected="line.origin_id.id == o.id">
+                                                                <t t-out="o.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select t-att-name="'condition_%s' % line.id"
+                                                            class="form-select form-select-sm">
+                                                        <t t-foreach="conditions" t-as="c">
+                                                            <option t-att-value="c.id"
+                                                                    t-att-selected="line.condition_id.id == c.id">
+                                                                <t t-out="c.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="checkbox"
+                                                           t-att-name="'available_%s' % line.id"
+                                                           checked="checked"
+                                                           class="form-check-input"/>
+                                                </td>
+                                                <td>
+                                                    <input type="number"
+                                                           t-att-name="'price_%s' % line.id"
+                                                           class="form-control form-control-sm"
+                                                           step="0.01"
+                                                           min="0"
+                                                           placeholder="0.00"
+                                                           required="required"/>
+                                                </td>
+                                                <td>
+                                                    <input type="text"
+                                                           t-att-name="'notes_%s' % line.id"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="..."/>
+                                                </td>
+                                            </tr>
+                                            <t t-set="idx" t-value="idx + 1"/>
+                                        </t>
+                                    </tbody>
+                                </table>
+
+                                <div class="text-center mt-3">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        Submit Quote
+                                    </button>
+                                </div>
+                            </form>
+                        </t>
+
+                        <!-- Submitted: Show read-only data -->
+                        <t t-if="is_submitted or success">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Part Code</th>
+                                        <th>Part Description</th>
+                                        <th>Qty</th>
+                                        <th>Origin</th>
+                                        <th>Condition</th>
+                                        <th>Available</th>
+                                        <th>Unit Price</th>
+                                        <th>Subtotal</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="idx" t-value="1"/>
+                                    <t t-foreach="lines" t-as="line">
+                                        <tr>
+                                            <td t-out="idx"/>
+                                            <td t-out="line.part_code"/>
+                                            <td t-out="line.procure_line_id.name"/>
+                                            <td t-out="line.quantity"/>
+                                            <td t-out="line.origin_id.name"/>
+                                            <td t-out="line.condition_id.name"/>
+                                            <td>
+                                                <t t-if="line.is_available">
+                                                    <span class="badge bg-success">Yes</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-danger">No</span>
+                                                </t>
+                                            </td>
+                                            <td t-out="line.price_unit"
+                                                t-options="{'widget': 'float', 'precision': 2}"/>
+                                            <td t-out="line.price_subtotal"
+                                                t-options="{'widget': 'float', 'precision': 2}"/>
+                                            <td t-out="line.notes"/>
+                                        </tr>
+                                        <t t-set="idx" t-value="idx + 1"/>
+                                    </t>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-primary">
+                                        <td colspan="8" class="text-end"><strong>Total:</strong></td>
+                                        <td><strong t-out="quote.amount_total"
+                                                    t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                        <td/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Countdown JavaScript -->
+            <t t-if="quote.quote_deadline and not is_expired and not is_submitted">
+                <script>
+                    (function() {
+                        var timerEl = document.getElementById('countdown-timer');
+                        var alertEl = document.getElementById('countdown-alert');
+                        if (!timerEl) return;
+                        var deadline = new Date(timerEl.dataset.deadline + 'Z');
+                        function update() {
+                            var now = new Date();
+                            var diff = deadline - now;
+                            if (diff &lt;= 0) {
+                                timerEl.textContent = 'หมดเวลา!';
+                                alertEl.className = 'alert alert-danger mt-3 text-center';
+                                // Disable form
+                                var form = document.querySelector('form');
+                                if (form) {
+                                    var inputs = form.querySelectorAll('input, button');
+                                    inputs.forEach(function(el) { el.disabled = true; });
+                                }
+                                return;
+                            }
+                            var mins = Math.floor(diff / 60000);
+                            var secs = Math.floor((diff % 60000) / 1000);
+                            timerEl.textContent = mins + ':' + (secs &lt; 10 ? '0' : '') + secs;
+                            setTimeout(update, 1000);
+                        }
+                        update();
+                    })();
+                </script>
+            </t>
+        </t>
+    </template>
+
+    <!-- ============================================ -->
+    <!-- Insurance Approval Portal (ประกันอนุมัติ)      -->
+    <!-- ============================================ -->
+    <template id="portal_insurance_approval_form" name="Insurance Approval Form">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10">
+
+                        <!-- Header -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h3 class="mb-0">
+                                    Insurance Approval — <t t-out="order.name"/>
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>Insurance:</strong>
+                                        <span t-out="order.partner_id.name"/>
+                                        <br/>
+                                        <strong>e-Claim:</strong>
+                                        <span t-out="order.eclaim_number"/>
+                                        <br/>
+                                        <strong>ePart:</strong>
+                                        <span t-out="order.epart_number"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Vehicle:</strong>
+                                        <span t-out="order.vehicle_brand"/>
+                                        <span t-out="order.vehicle_model"/>
+                                        <span t-out="order.vehicle_year"/>
+                                        <br/>
+                                        <strong>Plate:</strong>
+                                        <span t-out="order.vehicle_plate"/>
+                                        <br/>
+                                        <strong>Chassis:</strong>
+                                        <span t-out="order.vehicle_chassis"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Garage:</strong>
+                                        <span t-out="order.garage_id.name"/>
+                                        <br/>
+                                        <strong>Delivery Deadline:</strong>
+                                        <span t-out="order.delivery_deadline"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <t t-if="error == 'invalid_state'">
+                            <div class="alert alert-warning">
+                                <strong>ไม่สามารถอนุมัติได้</strong> — สถานะเอกสารไม่ถูกต้อง
+                            </div>
+                        </t>
+                        <t t-if="success">
+                            <div class="alert alert-success">
+                                <strong>อนุมัติเรียบร้อยแล้ว!</strong> ขอบคุณครับ
+                            </div>
+                        </t>
+                        <t t-if="is_rejected">
+                            <div class="alert alert-danger">
+                                <strong>ไม่อนุมัติ</strong> — เอกสารถูกส่งกลับเพื่อทบทวน
+                            </div>
+                        </t>
+                        <t t-if="is_approved and not success">
+                            <div class="alert alert-success">
+                                <strong>เอกสารนี้ได้รับการอนุมัติแล้ว</strong>
+                            </div>
+                        </t>
+
+                        <!-- Selected Vendor Quote Details -->
+                        <t t-if="quote">
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Quotation Details</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <table class="table table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Part Code</th>
+                                                <th>Part Description</th>
+                                                <th>Qty</th>
+                                                <th>Origin</th>
+                                                <th>Condition</th>
+                                                <th>Available</th>
+                                                <th>Unit Price</th>
+                                                <th>Subtotal</th>
+                                                <th>Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-set="idx" t-value="1"/>
+                                            <t t-foreach="lines" t-as="line">
+                                                <tr>
+                                                    <td t-out="idx"/>
+                                                    <td t-out="line.part_code"/>
+                                                    <td t-out="line.procure_line_id.name"/>
+                                                    <td t-out="line.quantity"/>
+                                                    <td t-out="line.origin_id.name"/>
+                                                    <td t-out="line.condition_id.name"/>
+                                                    <td>
+                                                        <t t-if="line.is_available">
+                                                            <span class="badge bg-success">Yes</span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge bg-danger">No</span>
+                                                        </t>
+                                                    </td>
+                                                    <td t-out="line.price_unit"
+                                                        t-options="{'widget': 'float', 'precision': 2}"/>
+                                                    <td t-out="line.price_subtotal"
+                                                        t-options="{'widget': 'float', 'precision': 2}"/>
+                                                    <td t-out="line.notes"/>
+                                                </tr>
+                                                <t t-set="idx" t-value="idx + 1"/>
+                                            </t>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-success">
+                                                <td colspan="8" class="text-end">
+                                                    <strong>Total:</strong>
+                                                </td>
+                                                <td>
+                                                    <strong t-out="quote.amount_total"
+                                                            t-options="{'widget': 'float', 'precision': 2}"/>
+                                                </td>
+                                                <td/>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </t>
+
+                        <!-- Approve / Reject Buttons -->
+                        <t t-if="not is_approved and not is_rejected">
+                            <div class="text-center mt-3">
+                                <form t-att-action="'/procure/approve/%s/confirm' % order.approval_token"
+                                      method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token"
+                                           t-att-value="request.csrf_token()"/>
+                                    <button type="submit" class="btn btn-success btn-lg me-3">
+                                        Approve
+                                    </button>
+                                </form>
+                                <form t-att-action="'/procure/approve/%s/reject' % order.approval_token"
+                                      method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token"
+                                           t-att-value="request.csrf_token()"/>
+                                    <button type="submit" class="btn btn-danger btn-lg">
+                                        Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </t>
+
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>
