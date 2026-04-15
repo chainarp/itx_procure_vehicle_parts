@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ======================== -->
+    <!-- Procure Order Form View  -->
+    <!-- ======================== -->
+    <record id="itx_procure_order_view_form" model="ir.ui.view">
+        <field name="name">itx.procure.order.view.form</field>
+        <field name="model">itx.procure.order</field>
+        <field name="arch" type="xml">
+            <form string="Procure Order">
+                <header>
+                    <!-- Send RFQ Button -->
+                    <button name="%(itx_procure_vehicle_parts.action_send_rfq_wizard)d"
+                            string="Send RFQ"
+                            type="action"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            context="{'default_order_id': id}"/>
+
+                    <!-- Approve -->
+                    <button name="action_approve"
+                            string="Approve (Insurance)"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'selected'"/>
+
+                    <!-- Cancel -->
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            invisible="state in ('done', 'cancelled')"/>
+
+                    <!-- Reset to Draft -->
+                    <button name="action_reset_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state != 'cancelled'"/>
+
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,sourcing,quoted,selected,approved,ordered,shipped,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Vendor Quotes -->
+                        <button class="oe_stat_button"
+                                name="action_view_vendor_quotes"
+                                type="object"
+                                icon="fa-file-text-o"
+                                invisible="vendor_quote_count == 0">
+                            <field name="vendor_quote_count" widget="statinfo" string="Quotes"/>
+                        </button>
+                        <!-- Sale Order -->
+                        <button class="oe_stat_button"
+                                name="action_view_sale_order"
+                                type="object"
+                                icon="fa-pencil-square-o"
+                                invisible="not sale_order_id">
+                            <span class="o_stat_text">Sale Order</span>
+                        </button>
+                        <!-- Purchase Order -->
+                        <button class="oe_stat_button"
+                                name="action_view_purchase_order"
+                                type="object"
+                                icon="fa-shopping-cart"
+                                invisible="not purchase_order_id">
+                            <span class="o_stat_text">Purchase Order</span>
+                        </button>
+                    </div>
+                    <field name="approval_token" invisible="1"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Insurance / Customer">
+                            <field name="partner_id"
+                                   options="{'no_create': True}"
+                                   placeholder="Select insurance company..."/>
+                            <field name="eclaim_number" placeholder="e-Claim number"/>
+                            <field name="epart_number" placeholder="ePart number"/>
+                            <field name="garage_id"
+                                   placeholder="Select garage (delivery to)..."
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Dates">
+                            <field name="date_order"/>
+                            <field name="delivery_deadline"/>
+                        </group>
+                    </group>
+                    <!-- Insurance Approval Link -->
+                    <div class="alert alert-info" invisible="not approval_token"
+                         role="alert">
+                        <strong>Insurance Approval Link:</strong>
+                        <field name="approval_url" widget="CopyClipboardChar"/>
+                    </div>
+
+                    <group string="Vehicle Information">
+                        <group>
+                            <field name="vehicle_brand" placeholder="e.g., TOYOTA"/>
+                            <field name="vehicle_model" placeholder="e.g., INNOVA"/>
+                            <field name="vehicle_year" placeholder="e.g., 2015"/>
+                            <field name="vehicle_submodel" placeholder="e.g., 2.8 V"/>
+                        </group>
+                        <group>
+                            <field name="vehicle_chassis" placeholder="VIN (required)"/>
+                            <field name="vehicle_plate" placeholder="e.g., 7กน8820"/>
+                            <field name="vehicle_color" placeholder="e.g., ดำ"/>
+                            <field name="vehicle_spec_id" readonly="1"
+                                   invisible="not vehicle_spec_id"/>
+                        </group>
+                    </group>
+                    <div invisible="state != 'draft'">
+                        <button name="action_create_spec"
+                                string="Create Spec"
+                                type="object"
+                                class="btn-secondary"
+                                icon="fa-cogs"/>
+                    </div>
+
+                    <notebook>
+                        <page string="Part Lines" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"
+                                           string="Part Description"
+                                           options="{'no_create': True}"
+                                           domain="[('product_tmpl_id.itx_spec_id', '=', parent.vehicle_spec_id)]"/>
+                                    <field name="name" column_invisible="1"/>
+                                    <field name="origin_id"/>
+                                    <field name="condition_id"/>
+                                    <field name="part_type" optional="hide"/>
+                                    <field name="quantity"/>
+                                    <field name="uom_id" optional="hide"/>
+                                    <field name="price_unit" optional="hide"/>
+                                    <field name="price_subtotal"/>
+                                    <field name="notes" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Vendor Quotes" name="quotes"
+                              invisible="vendor_quote_count == 0">
+                            <field name="vendor_quote_ids">
+                                <list>
+                                    <field name="vendor_id"/>
+                                    <field name="state" widget="badge"
+                                           decoration-info="state == 'sent'"
+                                           decoration-success="state in ('quoted', 'selected')"
+                                           decoration-danger="state == 'expired'"
+                                           decoration-muted="state == 'cancelled'"/>
+                                    <field name="amount_total"/>
+                                    <field name="quote_deadline"/>
+                                    <field name="date_quoted"/>
+                                    <field name="is_selected"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Internal notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Procure Order List View  -->
+    <!-- ======================== -->
+    <record id="itx_procure_order_view_list" model="ir.ui.view">
+        <field name="name">itx.procure.order.view.list</field>
+        <field name="model">itx.procure.order</field>
+        <field name="arch" type="xml">
+            <list string="Procure Orders"
+                  decoration-info="state == 'sourcing'"
+                  decoration-success="state in ('approved', 'ordered', 'done')"
+                  decoration-warning="state in ('quoted', 'selected')"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="eclaim_number"/>
+                <field name="vehicle_brand"/>
+                <field name="vehicle_model"/>
+                <field name="vehicle_plate"/>
+                <field name="date_order"/>
+                <field name="delivery_deadline"/>
+                <field name="vendor_quote_count" string="Quotes"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('draft', 'sourcing')"
+                       decoration-warning="state in ('quoted', 'selected')"
+                       decoration-success="state in ('approved', 'ordered', 'shipped', 'done')"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Procure Order Search     -->
+    <!-- ======================== -->
+    <record id="itx_procure_order_view_search" model="ir.ui.view">
+        <field name="name">itx.procure.order.view.search</field>
+        <field name="model">itx.procure.order</field>
+        <field name="arch" type="xml">
+            <search string="Search Procure Orders">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="eclaim_number"/>
+                <field name="epart_number"/>
+                <field name="vehicle_brand"/>
+                <field name="vehicle_model"/>
+                <field name="vehicle_plate"/>
+                <field name="vehicle_chassis"/>
+                <separator/>
+                <filter string="Draft" name="filter_draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter string="In Progress" name="filter_in_progress"
+                        domain="[('state', 'in', ['sourcing', 'quoted', 'selected', 'approved', 'ordered'])]"/>
+                <filter string="Done" name="filter_done"
+                        domain="[('state', '=', 'done')]"/>
+                <filter string="Cancelled" name="filter_cancelled"
+                        domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <group>
+                    <filter string="Insurance Company" name="groupby_partner"
+                            domain="[]" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Status" name="groupby_state"
+                            domain="[]" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ======================== -->
+    <!-- Action                   -->
+    <!-- ======================== -->
+    <record id="itx_procure_order_action" model="ir.actions.act_window">
+        <field name="name">Procure Orders</field>
+        <field name="res_model">itx.procure.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Procure Order
+            </p>
+            <p>
+                Procure Orders track insurance claim parts procurement
+                from receiving the claim to final delivery and billing.
+            </p>
+        </field>
+    </record>
+
+</odoo>

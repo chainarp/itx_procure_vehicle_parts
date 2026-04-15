@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_itx_procure_order_user,itx.procure.order.user,model_itx_procure_order,base.group_user,1,1,1,0
+access_itx_procure_order_manager,itx.procure.order.manager,model_itx_procure_order,stock.group_stock_manager,1,1,1,1
+access_itx_procure_order_line_user,itx.procure.order.line.user,model_itx_procure_order_line,base.group_user,1,1,1,0
+access_itx_procure_order_line_manager,itx.procure.order.line.manager,model_itx_procure_order_line,stock.group_stock_manager,1,1,1,1
+access_itx_vendor_quote_user,itx.vendor.quote.user,model_itx_vendor_quote,base.group_user,1,1,1,0
+access_itx_vendor_quote_manager,itx.vendor.quote.manager,model_itx_vendor_quote,stock.group_stock_manager,1,1,1,1
+access_itx_vendor_quote_line_user,itx.vendor.quote.line.user,model_itx_vendor_quote_line,base.group_user,1,1,1,0
+access_itx_vendor_quote_line_manager,itx.vendor.quote.line.manager,model_itx_vendor_quote_line,stock.group_stock_manager,1,1,1,1
+access_itx_send_rfq_wizard_user,itx.send.rfq.wizard.user,model_itx_send_rfq_wizard,base.group_user,1,1,1,0
