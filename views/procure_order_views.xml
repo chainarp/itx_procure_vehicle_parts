@@ -154,11 +154,9 @@
                             <field name="line_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="product_id"
-                                           string="Part Description"
-                                           options="{'no_create': True}"
-                                           domain="[('product_tmpl_id.itx_spec_id', '=', parent.vehicle_spec_id)]"/>
-                                    <field name="name" column_invisible="1"/>
+                                    <field name="name" string="Part Description"
+                                           placeholder="พิมพ์ชื่ออะไหล่..."/>
+                                    <field name="product_id" column_invisible="1"/>
                                     <field name="origin_id"/>
                                     <field name="condition_id"/>
                                     <field name="part_type" optional="hide"/>
