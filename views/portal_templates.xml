@@ -189,12 +189,12 @@
                                     <t t-set="idx" t-value="1"/>
                                     <t t-foreach="lines" t-as="line">
                                         <tr>
-                                            <td t-out="idx"/>
-                                            <td t-out="line.part_code"/>
-                                            <td t-out="line.procure_line_id.name"/>
-                                            <td t-out="line.quantity"/>
-                                            <td t-out="line.origin_id.name"/>
-                                            <td t-out="line.condition_id.name"/>
+                                            <td><t t-out="idx"/></td>
+                                            <td><t t-out="line.part_code"/></td>
+                                            <td><t t-out="line.procure_line_id.name"/></td>
+                                            <td><t t-out="line.quantity"/></td>
+                                            <td><t t-out="line.origin_id.name"/></td>
+                                            <td><t t-out="line.condition_id.name"/></td>
                                             <td>
                                                 <t t-if="line.is_available">
                                                     <span class="badge bg-success">Yes</span>
@@ -203,11 +203,11 @@
                                                     <span class="badge bg-danger">No</span>
                                                 </t>
                                             </td>
-                                            <td t-out="line.price_unit"
-                                                t-options="{'widget': 'float', 'precision': 2}"/>
-                                            <td t-out="line.price_subtotal"
-                                                t-options="{'widget': 'float', 'precision': 2}"/>
-                                            <td t-out="line.notes"/>
+                                            <td><t t-out="line.price_unit"
+                                                   t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                            <td><t t-out="line.price_subtotal"
+                                                   t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                            <td><t t-out="line.notes"/></td>
                                         </tr>
                                         <t t-set="idx" t-value="idx + 1"/>
                                     </t>
@@ -215,9 +215,9 @@
                                 <tfoot>
                                     <tr class="table-primary">
                                         <td colspan="8" class="text-end"><strong>Total:</strong></td>
-                                        <td><strong t-out="quote.amount_total"
-                                                    t-options="{'widget': 'float', 'precision': 2}"/></td>
-                                        <td/>
+                                        <td><strong><t t-out="quote.amount_total"
+                                                       t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -360,12 +360,12 @@
                                             <t t-set="idx" t-value="1"/>
                                             <t t-foreach="lines" t-as="line">
                                                 <tr>
-                                                    <td t-out="idx"/>
-                                                    <td t-out="line.part_code"/>
-                                                    <td t-out="line.procure_line_id.name"/>
-                                                    <td t-out="line.quantity"/>
-                                                    <td t-out="line.origin_id.name"/>
-                                                    <td t-out="line.condition_id.name"/>
+                                                    <td><t t-out="idx"/></td>
+                                                    <td><t t-out="line.part_code"/></td>
+                                                    <td><t t-out="line.procure_line_id.name"/></td>
+                                                    <td><t t-out="line.quantity"/></td>
+                                                    <td><t t-out="line.origin_id.name"/></td>
+                                                    <td><t t-out="line.condition_id.name"/></td>
                                                     <td>
                                                         <t t-if="line.is_available">
                                                             <span class="badge bg-success">Yes</span>
@@ -374,11 +374,11 @@
                                                             <span class="badge bg-danger">No</span>
                                                         </t>
                                                     </td>
-                                                    <td t-out="line.price_unit"
-                                                        t-options="{'widget': 'float', 'precision': 2}"/>
-                                                    <td t-out="line.price_subtotal"
-                                                        t-options="{'widget': 'float', 'precision': 2}"/>
-                                                    <td t-out="line.notes"/>
+                                                    <td><t t-out="line.price_unit"
+                                                           t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                                    <td><t t-out="line.price_subtotal"
+                                                           t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                                    <td><t t-out="line.notes"/></td>
                                                 </tr>
                                                 <t t-set="idx" t-value="idx + 1"/>
                                             </t>
@@ -389,10 +389,11 @@
                                                     <strong>Total:</strong>
                                                 </td>
                                                 <td>
-                                                    <strong t-out="quote.amount_total"
-                                                            t-options="{'widget': 'float', 'precision': 2}"/>
+                                                    <strong><t t-out="quote.amount_total"
+                                                               t-options="{'widget': 'float', 'precision': 2}"/></strong>
                                                 </td>
-                                                <td/>
+                                                <td></td>
+                                            </tr>
                                         </tfoot>
                                     </table>
                                 </div>
