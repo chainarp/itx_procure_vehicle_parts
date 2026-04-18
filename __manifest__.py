@@ -43,6 +43,7 @@ Developed by IT Expert Training & Outsourcing Co. (Thailand)
         'data/ir_cron_data.xml',
         # Views
         'views/send_rfq_wizard_views.xml',
+        'views/select_vendor_wizard_views.xml',
         'views/procure_order_views.xml',
         'views/vendor_quote_views.xml',
         'views/portal_templates.xml',

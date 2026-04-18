@@ -8,3 +8,5 @@ access_itx_vendor_quote_manager,itx.vendor.quote.manager,model_itx_vendor_quote,
 access_itx_vendor_quote_line_user,itx.vendor.quote.line.user,model_itx_vendor_quote_line,base.group_user,1,1,1,0
 access_itx_vendor_quote_line_manager,itx.vendor.quote.line.manager,model_itx_vendor_quote_line,stock.group_stock_manager,1,1,1,1
 access_itx_send_rfq_wizard_user,itx.send.rfq.wizard.user,model_itx_send_rfq_wizard,base.group_user,1,1,1,0
+access_itx_select_vendor_wizard_user,itx.select.vendor.wizard.user,model_itx_select_vendor_wizard,base.group_user,1,1,1,0
+access_itx_select_vendor_wizard_line_user,itx.select.vendor.wizard.line.user,model_itx_select_vendor_wizard_line,base.group_user,1,1,1,0

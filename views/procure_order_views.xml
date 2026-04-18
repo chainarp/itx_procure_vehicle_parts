@@ -18,12 +18,34 @@
                             invisible="state != 'draft'"
                             context="{'default_order_id': id}"/>
 
+                    <!-- Select Vendors (per-line) -->
+                    <button name="%(itx_procure_vehicle_parts.action_select_vendor_wizard)d"
+                            string="Select Vendors"
+                            type="action"
+                            class="btn-primary"
+                            invisible="state != 'quoted'"
+                            context="{'default_order_id': id}"/>
+
                     <!-- Approve -->
                     <button name="action_approve"
                             string="Approve (Insurance)"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'selected'"/>
+
+                    <!-- Create Invoices -->
+                    <button name="action_create_invoices"
+                            string="Create Invoices"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'shipped'"/>
+
+                    <!-- Mark as Done -->
+                    <button name="action_done"
+                            string="Mark as Done"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'billed'"/>
 
                     <!-- Cancel -->
                     <button name="action_cancel"
@@ -58,13 +80,29 @@
                                 invisible="not sale_order_id">
                             <span class="o_stat_text">Sale Order</span>
                         </button>
-                        <!-- Purchase Order -->
+                        <!-- Purchase Orders -->
                         <button class="oe_stat_button"
                                 name="action_view_purchase_order"
                                 type="object"
                                 icon="fa-shopping-cart"
-                                invisible="not purchase_order_id">
-                            <span class="o_stat_text">Purchase Order</span>
+                                invisible="purchase_order_count == 0">
+                            <field name="purchase_order_count" widget="statinfo" string="POs"/>
+                        </button>
+                        <!-- Customer Invoice -->
+                        <button class="oe_stat_button"
+                                name="action_view_invoice"
+                                type="object"
+                                icon="fa-file-text"
+                                invisible="state not in ('billed', 'done')">
+                            <span class="o_stat_text">Invoice</span>
+                        </button>
+                        <!-- Vendor Bill -->
+                        <button class="oe_stat_button"
+                                name="action_view_vendor_bill"
+                                type="object"
+                                icon="fa-credit-card"
+                                invisible="state not in ('billed', 'done')">
+                            <span class="o_stat_text">Vendor Bill</span>
                         </button>
                     </div>
                     <field name="approval_token" invisible="1"/>
@@ -124,11 +162,9 @@
                             <field name="line_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="product_id"
-                                           string="Part Description"
-                                           options="{'no_create': True}"
-                                           domain="[('product_tmpl_id.itx_spec_id', '=', parent.vehicle_spec_id)]"/>
-                                    <field name="name" column_invisible="1"/>
+                                    <field name="name" string="Part Description"
+                                           placeholder="พิมพ์ชื่ออะไหล่..."/>
+                                    <field name="product_id" column_invisible="1"/>
                                     <field name="origin_id"/>
                                     <field name="condition_id"/>
                                     <field name="part_type" optional="hide"/>

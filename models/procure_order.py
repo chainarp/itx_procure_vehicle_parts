@@ -111,16 +111,20 @@ class ProcureOrder(models.Model):
         string='Quotes',
     )
 
-    # === Linked Documents (1 SO, 1 PO per order) ===
+    # === Linked Documents (1 SO, N POs per order) ===
     sale_order_id = fields.Many2one(
         comodel_name='sale.order',
         string='Sale Order',
         copy=False,
     )
-    purchase_order_id = fields.Many2one(
+    purchase_order_ids = fields.Many2many(
         comodel_name='purchase.order',
-        string='Purchase Order',
+        string='Purchase Orders',
         copy=False,
+    )
+    purchase_order_count = fields.Integer(
+        string='PO Count',
+        compute='_compute_purchase_order_count',
     )
 
     # === Insurance Approval Portal ===
@@ -145,6 +149,11 @@ class ProcureOrder(models.Model):
                 rec.approval_url = f"{base_url}/procure/approve/{rec.approval_token}"
             else:
                 rec.approval_url = False
+
+    @api.depends('purchase_order_ids')
+    def _compute_purchase_order_count(self):
+        for rec in self:
+            rec.purchase_order_count = len(rec.purchase_order_ids)
 
     @api.depends('vendor_quote_ids')
     def _compute_vendor_quote_count(self):
@@ -325,34 +334,58 @@ class ProcureOrder(models.Model):
                 'state': 'draft',
                 'approval_token': False,
                 'sale_order_id': False,
-                'purchase_order_id': False,
+                'purchase_order_ids': [(5, 0, 0)],
             })
 
     def action_approve(self):
-        """ประกัน approve → auto สร้าง SO + PO + confirm"""
+        """ประกัน approve → auto สร้าง SO + POs (grouped by vendor) + confirm"""
         for rec in self:
             if rec.state != 'selected':
                 raise UserError(_('Can only approve orders in Selected state.'))
 
-            # Find selected quote
-            selected_quote = rec.vendor_quote_ids.filtered(
-                lambda q: q.is_selected and q.state == 'selected'
+            # === Gather selected quote lines (per-line vendor selection) ===
+            selected_qlines = rec.line_ids.mapped('selected_quote_line_id').filtered(
+                lambda ql: ql.is_available and ql.price_unit > 0
             )
-            if not selected_quote:
-                raise UserError(_('No vendor selected. Please select a vendor first.'))
-            selected_quote = selected_quote[0]
+            if not selected_qlines:
+                raise UserError(_('No vendor lines selected. Please select vendors first.'))
+
+            # === Resolve product variants from vendor quote (origin/condition) ===
+            quote_products = {}  # qline.id → product.product
+            for qline in selected_qlines:
+                tmpl = qline.procure_line_id.product_id.product_tmpl_id \
+                    if qline.procure_line_id.product_id else False
+                origin = qline.origin_id
+                condition = qline.condition_id
+                if tmpl and origin and condition:
+                    variant = tmpl._get_or_create_variant(origin, condition)
+                    quote_products[qline.id] = variant
+                elif qline.procure_line_id.product_id:
+                    quote_products[qline.id] = qline.procure_line_id.product_id
+
+            # === Ensure dropship route on all products ===
+            dropship_route = self.env.ref(
+                'stock_dropshipping.route_drop_shipping',
+                raise_if_not_found=False,
+            )
+            if dropship_route:
+                for product in quote_products.values():
+                    tmpl = product.product_tmpl_id
+                    if dropship_route not in tmpl.route_ids:
+                        tmpl.write({'route_ids': [(4, dropship_route.id)]})
 
             # === Create Sale Order (ขายให้ประกัน) ===
             so_lines = []
-            for qline in selected_quote.line_ids:
-                if qline.is_available and qline.price_unit > 0:
-                    so_lines.append((0, 0, {
-                        'product_id': qline.procure_line_id.product_id.id
-                            if qline.procure_line_id.product_id else False,
-                        'name': qline.name or qline.procure_line_id.name,
-                        'product_uom_qty': qline.quantity,
-                        'price_unit': qline.price_unit,
-                    }))
+            for qline in selected_qlines:
+                if qline.id not in quote_products:
+                    continue
+                product = quote_products[qline.id]
+                so_lines.append((0, 0, {
+                    'product_id': product.id,
+                    'name': qline.procure_line_id.name,
+                    'product_uom_qty': qline.quantity,
+                    'price_unit': qline.price_unit,
+                }))
 
             if not so_lines:
                 raise UserError(_('No available items with prices to create orders.'))
@@ -366,40 +399,110 @@ class ProcureOrder(models.Model):
             so = self.env['sale.order'].create(so_vals)
             so.action_confirm()
 
-            # === Create Purchase Order (ซื้อจาก vendor) ===
-            po_lines = []
-            for qline in selected_quote.line_ids:
-                if qline.is_available and qline.price_unit > 0:
-                    po_lines.append((0, 0, {
-                        'product_id': qline.procure_line_id.product_id.id
-                            if qline.procure_line_id.product_id else False,
-                        'name': qline.name or qline.procure_line_id.name,
-                        'product_qty': qline.quantity,
-                        'price_unit': qline.price_unit,
-                        'date_planned': qline.delivery_date or fields.Date.today(),
-                    }))
+            # === Group selected quote lines by vendor ===
+            vendor_qlines = {}  # vendor_id → [qline, ...]
+            for qline in selected_qlines:
+                if qline.id not in quote_products:
+                    continue
+                vendor = qline.quote_id.vendor_id
+                vendor_qlines.setdefault(vendor.id, []).append(qline)
 
-            # Find dropship picking type so Odoo creates DS/ transfer
+            # === Find auto-created POs from dropship route ===
+            po_lines_found = self.env['purchase.order.line'].search([
+                ('sale_line_id', 'in', so.order_line.ids),
+            ])
+            auto_pos = po_lines_found.order_id
+
+            # === Create/update POs per vendor ===
+            all_pos = self.env['purchase.order']
             dropship_picking_type = self.env['stock.picking.type'].search([
                 ('code', '=', 'dropship'),
-                ('company_id', '=', rec.company_id.id),
+                ('company_id', '=', self.env.company.id),
             ], limit=1)
 
-            po_vals = {
-                'partner_id': selected_quote.vendor_id.id,
-                'dest_address_id': rec.garage_id.id if rec.garage_id else False,
-                'origin': rec.name,
-                'order_line': po_lines,
-            }
-            if dropship_picking_type:
-                po_vals['picking_type_id'] = dropship_picking_type.id
-            po = self.env['purchase.order'].create(po_vals)
-            po.button_confirm()
+            for vendor_id, qlines in vendor_qlines.items():
+                vendor = self.env['res.partner'].browse(vendor_id)
+                vendor_products = {
+                    quote_products[ql.id].id: ql
+                    for ql in qlines if ql.id in quote_products
+                }
+
+                # Check if Odoo auto-created a PO for this vendor's products
+                matching_po = False
+                for po in auto_pos:
+                    po_product_ids = set(po.order_line.mapped('product_id').ids)
+                    if po_product_ids & set(vendor_products.keys()):
+                        matching_po = po
+                        break
+
+                if matching_po:
+                    # Update existing auto-PO with correct vendor & prices
+                    matching_po.write({
+                        'partner_id': vendor.id,
+                        'dest_address_id': rec.garage_id.id if rec.garage_id else False,
+                        'origin': rec.name,
+                    })
+                    for po_line in matching_po.order_line:
+                        if po_line.product_id.id in vendor_products:
+                            ql = vendor_products[po_line.product_id.id]
+                            po_line.price_unit = ql.price_unit
+
+                    # Add missing PO lines
+                    existing_pids = set(matching_po.order_line.mapped('product_id').ids)
+                    for pid, ql in vendor_products.items():
+                        if pid not in existing_pids:
+                            self.env['purchase.order.line'].create({
+                                'order_id': matching_po.id,
+                                'product_id': pid,
+                                'name': ql.procure_line_id.name,
+                                'product_qty': ql.quantity,
+                                'price_unit': ql.price_unit,
+                                'date_planned': fields.Date.today(),
+                            })
+
+                    # Remove PO lines not belonging to this vendor
+                    for po_line in matching_po.order_line:
+                        if po_line.product_id.id not in vendor_products:
+                            po_line.unlink()
+
+                    matching_po.button_confirm()
+                    all_pos |= matching_po
+                    auto_pos -= matching_po
+                else:
+                    # Create PO manually for this vendor
+                    po_lines = []
+                    for ql in qlines:
+                        if ql.id not in quote_products:
+                            continue
+                        product = quote_products[ql.id]
+                        po_lines.append((0, 0, {
+                            'product_id': product.id,
+                            'name': ql.procure_line_id.name,
+                            'product_qty': ql.quantity,
+                            'price_unit': ql.price_unit,
+                            'date_planned': fields.Date.today(),
+                        }))
+                    po_vals = {
+                        'partner_id': vendor.id,
+                        'dest_address_id': rec.garage_id.id if rec.garage_id else False,
+                        'origin': rec.name,
+                        'order_line': po_lines,
+                    }
+                    if dropship_picking_type:
+                        po_vals['picking_type_id'] = dropship_picking_type.id
+                    new_po = self.env['purchase.order'].create(po_vals)
+                    new_po.button_confirm()
+                    all_pos |= new_po
+
+            # Cancel any leftover auto-POs not matched to a vendor
+            for leftover_po in auto_pos:
+                if leftover_po.state == 'draft':
+                    leftover_po.button_cancel()
 
             rec.write({
                 'state': 'ordered',
                 'sale_order_id': so.id,
-                'purchase_order_id': po.id,
+                'purchase_order_ids': [(6, 0, all_pos.ids)],
             })
 
     def action_reject(self):
@@ -414,6 +517,106 @@ class ProcureOrder(models.Model):
                 'state': 'quoted',
                 'approval_token': False,
             })
+
+    # === Invoicing ===
+    invoice_status = fields.Selection([
+        ('no', 'Nothing to Invoice'),
+        ('to_invoice', 'To Invoice'),
+        ('partial', 'Partially Invoiced'),
+        ('invoiced', 'Fully Invoiced'),
+    ], string='Invoice Status', compute='_compute_invoice_status', store=True)
+
+    @api.depends(
+        'sale_order_id.invoice_ids.state',
+        'sale_order_id.invoice_ids.payment_state',
+        'purchase_order_ids.invoice_ids.state',
+        'purchase_order_ids.invoice_ids.payment_state',
+        'state',
+    )
+    def _compute_invoice_status(self):
+        for rec in self:
+            if rec.state not in ('shipped', 'billed', 'done'):
+                rec.invoice_status = 'no'
+                continue
+
+            so_invoiced = bool(
+                rec.sale_order_id
+                and rec.sale_order_id.invoice_ids.filtered(
+                    lambda inv: inv.state == 'posted'
+                )
+            )
+            po_billed = rec.purchase_order_ids and all(
+                po.invoice_ids.filtered(lambda inv: inv.state == 'posted')
+                for po in rec.purchase_order_ids
+            )
+
+            if so_invoiced and po_billed:
+                rec.invoice_status = 'invoiced'
+            elif so_invoiced or po_billed:
+                rec.invoice_status = 'partial'
+            else:
+                rec.invoice_status = 'to_invoice'
+
+    def action_create_invoices(self):
+        """สร้าง Customer Invoice (จาก SO) + Vendor Bills (จาก POs)"""
+        for rec in self:
+            if rec.state not in ('shipped', 'billed'):
+                raise UserError(_('Can only create invoices after shipment.'))
+
+            # Customer Invoice จาก SO
+            if rec.sale_order_id:
+                so = rec.sale_order_id
+                existing_inv = so.invoice_ids.filtered(
+                    lambda inv: inv.state != 'cancel'
+                )
+                if not existing_inv:
+                    inv = so._create_invoices()
+                    inv.action_post()
+
+            # Vendor Bills จาก POs (one per PO/vendor)
+            for po in rec.purchase_order_ids:
+                existing_bill = po.invoice_ids.filtered(
+                    lambda inv: inv.state != 'cancel'
+                )
+                if not existing_bill:
+                    po.action_create_invoice()
+                    bill = po.invoice_ids.filtered(
+                        lambda inv: inv.state == 'draft'
+                    )[:1]
+                    if bill:
+                        bill.action_post()
+
+            # Update state
+            rec.write({'state': 'billed'})
+
+    def action_done(self):
+        """Mark procure order as done — ปิดงาน"""
+        for rec in self:
+            if rec.state != 'billed':
+                raise UserError(_('Can only mark as Done after invoicing.'))
+
+            # Check if all invoices are paid
+            so_paid = True
+            po_paid = True
+            if rec.sale_order_id:
+                inv = rec.sale_order_id.invoice_ids.filtered(
+                    lambda i: i.state == 'posted'
+                )
+                so_paid = all(i.payment_state in ('paid', 'in_payment') for i in inv) if inv else False
+            if rec.purchase_order_ids:
+                all_bills = rec.purchase_order_ids.mapped('invoice_ids').filtered(
+                    lambda i: i.state == 'posted'
+                )
+                po_paid = all(
+                    i.payment_state in ('paid', 'in_payment') for i in all_bills
+                ) if all_bills else False
+
+            if not so_paid or not po_paid:
+                raise UserError(_(
+                    'ยังมี Invoice/Bill ที่ยังไม่ได้ชำระ กรุณาชำระเงินก่อน Mark as Done'
+                ))
+
+            rec.write({'state': 'done'})
 
     # === Smart Buttons ===
     def action_view_vendor_quotes(self):
@@ -439,10 +642,59 @@ class ProcureOrder(models.Model):
 
     def action_view_purchase_order(self):
         self.ensure_one()
-        if self.purchase_order_id:
+        if len(self.purchase_order_ids) == 1:
             return {
                 'type': 'ir.actions.act_window',
                 'res_model': 'purchase.order',
                 'view_mode': 'form',
-                'res_id': self.purchase_order_id.id,
+                'res_id': self.purchase_order_ids.id,
             }
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Purchase Orders'),
+            'res_model': 'purchase.order',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.purchase_order_ids.ids)],
+        }
+
+    def action_view_invoice(self):
+        """Open customer invoice linked to SO"""
+        self.ensure_one()
+        invoices = self.sale_order_id.invoice_ids.filtered(
+            lambda inv: inv.state != 'cancel' and inv.move_type == 'out_invoice'
+        )
+        if len(invoices) == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.move',
+                'view_mode': 'form',
+                'res_id': invoices.id,
+            }
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Customer Invoices'),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', invoices.ids)],
+        }
+
+    def action_view_vendor_bill(self):
+        """Open vendor bills linked to POs"""
+        self.ensure_one()
+        bills = self.purchase_order_ids.mapped('invoice_ids').filtered(
+            lambda inv: inv.state != 'cancel' and inv.move_type == 'in_invoice'
+        )
+        if len(bills) == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.move',
+                'view_mode': 'form',
+                'res_id': bills.id,
+            }
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Vendor Bills'),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', bills.ids)],
+        }
