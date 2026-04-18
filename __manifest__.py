@@ -8,7 +8,7 @@
 ITX Procure Vehicle Parts — Insurance Parts Procurement
 ========================================================
 
-จัดหาอะไหล่รถยนต์ผ่านระบบเคลมประกันภัย (ePart / BlueVenture / EMCS)
+
 
 Workflow:
 1. รับออเดอร์จากบริษัทประกันภัย
