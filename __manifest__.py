@@ -4,7 +4,7 @@
     'version': '19.0.1.0.0',
     'category': 'Inventory/Inventory',
     'summary': 'Insurance Claim Parts Procurement & Fulfillment',
-    'description': """
+    'description': 'By Chainaris Padunkul  & Claude'
 ITX Procure Vehicle Parts — Insurance Parts Procurement
 ========================================================
 
@@ -43,6 +43,7 @@ Developed by IT Expert Training & Outsourcing Co. (Thailand)
         'data/ir_cron_data.xml',
         # Views
         'views/send_rfq_wizard_views.xml',
+        'views/select_vendor_wizard_views.xml',
         'views/procure_order_views.xml',
         'views/vendor_quote_views.xml',
         'views/portal_templates.xml',

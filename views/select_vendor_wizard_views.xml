@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Select Vendor Wizard Form -->
+    <record id="itx_select_vendor_wizard_view_form" model="ir.ui.view">
+        <field name="name">itx.select.vendor.wizard.view.form</field>
+        <field name="model">itx.select.vendor.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Select Best Vendor Per Line">
+                <field name="order_id" invisible="1"/>
+                <group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>เลือก vendor ที่ดีที่สุดสำหรับแต่ละ line</strong><br/>
+                        ระบบจะเลือกราคาถูกสุดให้อัตโนมัติ — สามารถเปลี่ยนได้
+                    </div>
+                </group>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="procure_line_id" invisible="1"/>
+                        <field name="part_name" string="Part"/>
+                        <field name="quantity" string="Qty"/>
+                        <field name="selected_quote_line_id"
+                               string="Vendor Quote"
+                               options="{'no_create': True}"/>
+                        <field name="selected_vendor_name" string="Vendor"/>
+                        <field name="selected_origin" string="Origin"/>
+                        <field name="selected_condition" string="Condition"/>
+                        <field name="selected_price" string="Price"/>
+                        <field name="selected_notes" string="Notes"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_confirm_selection"
+                            string="Confirm Selection"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_select_vendor_wizard" model="ir.actions.act_window">
+        <field name="name">Select Vendors</field>
+        <field name="res_model">itx.select.vendor.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

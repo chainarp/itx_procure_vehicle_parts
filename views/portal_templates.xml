@@ -334,69 +334,71 @@
                             </div>
                         </t>
 
-                        <!-- Selected Vendor Quote Details -->
-                        <t t-if="quote">
-                            <div class="card mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">Quotation Details</h5>
-                                </div>
-                                <div class="card-body p-0">
-                                    <table class="table table-bordered mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Part Code</th>
-                                                <th>Part Description</th>
-                                                <th>Qty</th>
-                                                <th>Origin</th>
-                                                <th>Condition</th>
-                                                <th>Available</th>
-                                                <th>Unit Price</th>
-                                                <th>Subtotal</th>
-                                                <th>Notes</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <t t-set="idx" t-value="1"/>
-                                            <t t-foreach="lines" t-as="line">
+                        <!-- Selected Lines Grouped by Vendor -->
+                        <t t-if="vendor_groups">
+                            <t t-foreach="vendor_groups.items()" t-as="vg">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0">Vendor: <t t-out="vg[0]"/></h5>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <table class="table table-bordered mb-0">
+                                            <thead class="table-light">
                                                 <tr>
-                                                    <td><t t-out="idx"/></td>
-                                                    <td><t t-out="line.part_code"/></td>
-                                                    <td><t t-out="line.procure_line_id.name"/></td>
-                                                    <td><t t-out="line.quantity"/></td>
-                                                    <td><t t-out="line.origin_id.name"/></td>
-                                                    <td><t t-out="line.condition_id.name"/></td>
-                                                    <td>
-                                                        <t t-if="line.is_available">
-                                                            <span class="badge bg-success">Yes</span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span class="badge bg-danger">No</span>
-                                                        </t>
-                                                    </td>
-                                                    <td><t t-out="line.price_unit"
-                                                           t-options="{'widget': 'float', 'precision': 2}"/></td>
-                                                    <td><t t-out="line.price_subtotal"
-                                                           t-options="{'widget': 'float', 'precision': 2}"/></td>
-                                                    <td><t t-out="line.notes"/></td>
+                                                    <th>#</th>
+                                                    <th>Part Code</th>
+                                                    <th>Part Description</th>
+                                                    <th>Qty</th>
+                                                    <th>Origin</th>
+                                                    <th>Condition</th>
+                                                    <th>Unit Price</th>
+                                                    <th>Subtotal</th>
+                                                    <th>Notes</th>
                                                 </tr>
-                                                <t t-set="idx" t-value="idx + 1"/>
-                                            </t>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="table-success">
-                                                <td colspan="8" class="text-end">
-                                                    <strong>Total:</strong>
-                                                </td>
-                                                <td>
-                                                    <strong><t t-out="quote.amount_total"
-                                                               t-options="{'widget': 'float', 'precision': 2}"/></strong>
-                                                </td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                <t t-set="idx" t-value="1"/>
+                                                <t t-set="vendor_total" t-value="0"/>
+                                                <t t-foreach="vg[1]" t-as="line">
+                                                    <tr>
+                                                        <td><t t-out="idx"/></td>
+                                                        <td><t t-out="line.part_code"/></td>
+                                                        <td><t t-out="line.procure_line_id.name"/></td>
+                                                        <td><t t-out="line.quantity"/></td>
+                                                        <td><t t-out="line.origin_id.name"/></td>
+                                                        <td><t t-out="line.condition_id.name"/></td>
+                                                        <td><t t-out="line.price_unit"
+                                                               t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                                        <td><t t-out="line.price_subtotal"
+                                                               t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                                        <td><t t-out="line.notes"/></td>
+                                                    </tr>
+                                                    <t t-set="idx" t-value="idx + 1"/>
+                                                    <t t-set="vendor_total" t-value="vendor_total + line.price_subtotal"/>
+                                                </t>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="table-light">
+                                                    <td colspan="7" class="text-end">
+                                                        <strong>Vendor Subtotal:</strong>
+                                                    </td>
+                                                    <td>
+                                                        <strong><t t-out="vendor_total"
+                                                                   t-options="{'widget': 'float', 'precision': 2}"/></strong>
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 </div>
+                            </t>
+                            <!-- Grand Total -->
+                            <div class="text-end mb-4">
+                                <h4>Grand Total:
+                                    <t t-out="total_amount"
+                                       t-options="{'widget': 'float', 'precision': 2}"/>
+                                </h4>
                             </div>
                         </t>
 

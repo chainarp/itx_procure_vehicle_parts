@@ -138,16 +138,23 @@ class VendorQuotePortal(http.Controller):
         if not order:
             return request.render('http_routing.404')
 
-        # Find the selected quote
-        selected_quote = request.env['itx.vendor.quote'].sudo().search([
-            ('order_id', '=', order.id),
-            ('is_selected', '=', True),
-        ], limit=1)
+        # Gather per-line selected quote lines (multi-vendor)
+        selected_qlines = order.line_ids.mapped('selected_quote_line_id').filtered(
+            lambda ql: ql.is_available and ql.price_unit > 0
+        )
+        # Group by vendor for display
+        vendor_groups = {}  # vendor_name → [qline, ...]
+        total_amount = 0
+        for ql in selected_qlines:
+            vendor_name = ql.quote_id.vendor_id.name
+            vendor_groups.setdefault(vendor_name, []).append(ql)
+            total_amount += ql.price_subtotal
 
         values = {
             'order': order,
-            'quote': selected_quote,
-            'lines': selected_quote.line_ids if selected_quote else [],
+            'vendor_groups': vendor_groups,
+            'selected_qlines': selected_qlines,
+            'total_amount': total_amount,
             'is_approved': order.state in ('approved', 'ordered', 'shipped', 'billed', 'done'),
             'is_rejected': kwargs.get('rejected'),
             'error': kwargs.get('error'),

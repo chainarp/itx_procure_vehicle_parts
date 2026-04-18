@@ -67,6 +67,24 @@ class ProcureOrderLine(models.Model):
         help='สภาพอะไหล่ — default New สำหรับ procure',
     )
 
+    # === Vendor Selection (per-line) ===
+    selected_quote_line_id = fields.Many2one(
+        comodel_name='itx.vendor.quote.line',
+        string='Selected Quote Line',
+        help='Vendor quote line ที่ถูกเลือกสำหรับ line นี้',
+    )
+    selected_vendor_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Selected Vendor',
+        related='selected_quote_line_id.quote_id.vendor_id',
+        store=True,
+    )
+    selected_price = fields.Float(
+        string='Selected Price',
+        related='selected_quote_line_id.price_unit',
+        store=True,
+    )
+
     # === Notes ===
     notes = fields.Text(string='Notes')
 

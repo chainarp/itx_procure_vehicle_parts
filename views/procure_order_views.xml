@@ -18,6 +18,14 @@
                             invisible="state != 'draft'"
                             context="{'default_order_id': id}"/>
 
+                    <!-- Select Vendors (per-line) -->
+                    <button name="%(itx_procure_vehicle_parts.action_select_vendor_wizard)d"
+                            string="Select Vendors"
+                            type="action"
+                            class="btn-primary"
+                            invisible="state != 'quoted'"
+                            context="{'default_order_id': id}"/>
+
                     <!-- Approve -->
                     <button name="action_approve"
                             string="Approve (Insurance)"
@@ -72,13 +80,13 @@
                                 invisible="not sale_order_id">
                             <span class="o_stat_text">Sale Order</span>
                         </button>
-                        <!-- Purchase Order -->
+                        <!-- Purchase Orders -->
                         <button class="oe_stat_button"
                                 name="action_view_purchase_order"
                                 type="object"
                                 icon="fa-shopping-cart"
-                                invisible="not purchase_order_id">
-                            <span class="o_stat_text">Purchase Order</span>
+                                invisible="purchase_order_count == 0">
+                            <field name="purchase_order_count" widget="statinfo" string="POs"/>
                         </button>
                         <!-- Customer Invoice -->
                         <button class="oe_stat_button"
