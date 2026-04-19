@@ -344,11 +344,26 @@ class ProcureOrder(models.Model):
                 raise UserError(_('Can only approve orders in Selected state.'))
 
             # === Gather selected quote lines (per-line vendor selection) ===
-            selected_qlines = rec.line_ids.mapped('selected_quote_line_id').filtered(
+            all_selected = rec.line_ids.mapped('selected_quote_line_id')
+            selected_qlines = all_selected.filtered(
                 lambda ql: ql.is_available and ql.price_unit > 0
             )
             if not selected_qlines:
-                raise UserError(_('No vendor lines selected. Please select vendors first.'))
+                # Debug: show why filtered out
+                debug_lines = []
+                for pline in rec.line_ids:
+                    ql = pline.selected_quote_line_id
+                    if ql:
+                        debug_lines.append(
+                            f'  {pline.name}: quote={ql.id}, avail={ql.is_available}, price={ql.price_unit}'
+                        )
+                    else:
+                        debug_lines.append(f'  {pline.name}: no quote selected')
+                detail = '\n'.join(debug_lines) if debug_lines else 'No lines found'
+                raise UserError(_(
+                    'No vendor lines selected (or all filtered out).\n\n'
+                    'Line details:\n%s'
+                ) % detail)
 
             # === Resolve product variants from vendor quote (origin/condition) ===
             quote_products = {}  # qline.id → product.product

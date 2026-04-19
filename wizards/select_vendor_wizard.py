@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class SelectVendorWizard(models.TransientModel):
@@ -29,7 +32,6 @@ class SelectVendorWizard(models.TransientModel):
         order = self.env['itx.procure.order'].browse(order_id)
         lines = []
         for pline in order.line_ids:
-            # Find all vendor quote lines for this procure line
             quote_lines = self.env['itx.vendor.quote.line'].search([
                 ('procure_line_id', '=', pline.id),
                 ('quote_id.state', 'in', ['quoted', 'selected']),
@@ -37,7 +39,6 @@ class SelectVendorWizard(models.TransientModel):
                 ('price_unit', '>', 0),
             ])
 
-            # Pre-select: cheapest available or already selected
             default_qline = pline.selected_quote_line_id
             if not default_qline and quote_lines:
                 default_qline = quote_lines.sorted('price_unit')[0]
@@ -55,28 +56,42 @@ class SelectVendorWizard(models.TransientModel):
         self.ensure_one()
         order = self.order_id
 
-        has_selection = False
-        for wline in self.line_ids:
-            if wline.selected_quote_line_id:
-                wline.procure_line_id.write({
-                    'selected_quote_line_id': wline.selected_quote_line_id.id,
-                })
-                has_selection = True
-            else:
-                wline.procure_line_id.write({
-                    'selected_quote_line_id': False,
-                })
+        _logger.info('=== SELECT VENDOR: wizard has %d lines ===', len(self.line_ids))
 
-        if not has_selection:
+        # Build mapping: procure_line_id → quote_line_id
+        selection_map = {}
+        for wline in self.line_ids:
+            pline_id = wline.procure_line_id.id
+            qline_id = wline.selected_quote_line_id.id if wline.selected_quote_line_id else False
+            _logger.info('  wizard line: procure_line=%s, quote_line=%s', pline_id, qline_id)
+            if pline_id and qline_id:
+                selection_map[pline_id] = qline_id
+
+        if not selection_map:
             raise UserError(_('กรุณาเลือก vendor อย่างน้อย 1 line'))
 
+        # Write selections directly to procure order lines
+        ProcureLine = self.env['itx.procure.order.line']
+        for pline in order.line_ids:
+            qline_id = selection_map.get(pline.id, False)
+            pline.write({'selected_quote_line_id': qline_id})
+
+        # Flush to DB
+        self.env.flush_all()
+
+        # Verify writes persisted
+        self.env.invalidate_all()
+        verify_count = sum(1 for pl in order.line_ids if pl.selected_quote_line_id)
+        _logger.info('  verified: %d / %d lines have selected_quote_line_id', verify_count, len(order.line_ids))
+        if not verify_count:
+            raise UserError(_(
+                'เลือก vendor แล้ว แต่ค่าไม่ถูกบันทึก — กรุณาแจ้ง developer\n'
+                'selection_map: %s'
+            ) % selection_map)
+
         # Mark selected vendor quotes
-        # Clear old selections
         order.vendor_quote_ids.write({'is_selected': False})
-        # Mark quotes that have at least one selected line
-        selected_quotes = order.line_ids.mapped(
-            'selected_quote_line_id.quote_id'
-        )
+        selected_quotes = order.line_ids.mapped('selected_quote_line_id.quote_id')
         selected_quotes.write({'is_selected': True, 'state': 'selected'})
 
         # Update order state
