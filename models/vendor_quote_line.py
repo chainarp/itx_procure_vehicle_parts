@@ -82,3 +82,17 @@ class VendorQuoteLine(models.Model):
     def _compute_price_subtotal(self):
         for line in self:
             line.price_subtotal = line.quantity * line.price_unit
+
+    @api.depends('quote_id.vendor_id.name', 'price_unit', 'origin_id.name', 'condition_id.name')
+    def _compute_display_name(self):
+        for line in self:
+            vendor = line.quote_id.vendor_id.name or '?'
+            price = f'{line.price_unit:,.0f}'
+            parts = [vendor, f'฿{price}']
+            if line.origin_id:
+                parts.append(line.origin_id.name)
+            if line.condition_id:
+                parts.append(line.condition_id.name)
+            if line.notes:
+                parts.append(line.notes.strip()[:30])
+            line.display_name = ' | '.join(parts)
