@@ -4,7 +4,7 @@
     'version': '19.0.1.0.0',
     'category': 'Inventory/Inventory',
     'summary': 'Insurance Claim Parts Procurement & Fulfillment',
-    'description': """
+    'description': """By Chainaris Padunkul & Claude
 ITX Procure Vehicle Parts — Insurance Parts Procurement
 ========================================================
 

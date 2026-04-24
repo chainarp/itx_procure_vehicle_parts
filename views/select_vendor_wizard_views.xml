@@ -16,12 +16,13 @@
                 </group>
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom" create="0" delete="0">
-                        <field name="procure_line_id" invisible="1"/>
+                        <field name="procure_line_id" column_invisible="1" force_save="1"/>
                         <field name="part_name" string="Part"/>
                         <field name="quantity" string="Qty"/>
                         <field name="selected_quote_line_id"
                                string="Vendor Quote"
-                               options="{'no_create': True}"/>
+                               options="{'no_create': True}"
+                               force_save="1"/>
                         <field name="selected_vendor_name" string="Vendor"/>
                         <field name="selected_origin" string="Origin"/>
                         <field name="selected_condition" string="Condition"/>
